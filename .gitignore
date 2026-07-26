@@ -1,0 +1,5 @@
+# Never commit state.db - it contains sensitive tokens
+state/
+*.db
+*.db-wal
+*.db-shm
