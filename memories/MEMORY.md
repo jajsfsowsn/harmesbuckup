@@ -1,0 +1,1 @@
+Git clone with embedded PAT (https://ghp_xxx@github.com/...) requires `GIT_TERMINAL_PROMPT=0` to avoid hanging on credential prompts. Use `--depth 1` for faster initial clone. Port 22 often blocked in cloud environments, use HTTPS (port 443) instead.
