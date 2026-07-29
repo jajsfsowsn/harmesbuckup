@@ -181,9 +181,11 @@ Add step-by-step guides next to form fields using collapse components:
 ## Communication Style
 This user (Mehrdad) communicates in Persian and prefers:
 - **Action-first:** Do the work, show results. Don't explain what you're about to do before doing it.
+- **Autonomous execution:** When user says "خودت انجام بده" (do it yourself) or "خودت نمیتونی؟" (can't you do it?), they want YOU to complete the task — not suggest alternatives or ask them to do it. Never respond to "do this" with "you do this step, then that step".
 - **Concise output:** Bullet points > paragraphs. Show the result, not the process.
 - **No hand-holding:** If a tool works, just use it. Don't ask "should I proceed?".
-- **Frustration signals:** "اوسکول", "چرا کار نمیکنی", "بکن دیگه" = user wants action NOW.
+- **No repeated failures:** If something fails 2+ times, try a completely different approach — don't retry the same thing.
+- **Frustration signals:** "اوسکول", "چرا کار نمیکنی", "بکن دیگه", "انجام بده خودت" = user wants action NOW.
 - Persian abbreviations: "ورسل" = Vercel, "رلوی" = Railway — clarify if ambiguous.
 
 ## Telegram Config Distribution
@@ -377,6 +379,10 @@ Extract from decoded JSON: `outbounds[0].settings.vnext[0]` for server info, `ou
 After completing changes to a project, the user expects a downloadable backup file (tar.gz). Proactively create and send it via MEDIA: path without being asked.
 
 ## Pitfalls
+- **GitHub Actions: Use pre-built Xray binaries, NOT compilation** — Compiling Xray-core on GitHub Actions frequently fails because Go toolchain version doesn't match what Xray-core's go.mod requires. Error: "go: download go1.26: toolchain not available". Fix: download pre-built binaries from `github.com/XTLS/Xray-core/releases/latest/download/` (ARM64, x86_64, x86). Only compile locally if you control the Go version.
+- **GitHub token needs `workflow` scope to upload workflow files** — Uploading `.github/workflows/build.yml` via API or git push fails without `workflow` scope. API returns 404 "Not Found"; git push says "refusing to allow a Personal Access Token to create or update workflow without `workflow` scope". Fix: create token at https://github.com/settings/tokens/new with BOTH `repo` AND `workflow` scopes checked. Different GitHub accounts may have different token permissions — verify scopes with `curl -I -H "Authorization: token $TOKEN" https://api.github.com/user | grep x-oauth-scopes`.
+- **Different GitHub accounts = different tokens** — User may provide tokens for different accounts. Each token only works with repos under that account. If API returns 404, check which user the token belongs to: `curl -H "Authorization: token $TOKEN" https://api.github.com/user`.
+- **`git init` defaults to `master`, not `main`** — GitHub expects `main`. After `git init`, run `git branch -m master main` before pushing. Error: "src refspec main does not match any".
 - **3x-ui `expiryTime` MUST be in milliseconds** — `Date.now() + 30 * 24 * 60 * 60 * 1000` (NOT seconds: `Math.floor(Date.now()/1000 + ...)`). If client shows 0 days or immediate expiry, this is the cause. Panel stores ms internally.
 - **Subscription link may show `⏳0D` even when client is valid** — The 3x-ui subscription generator sometimes fails to parse `expiryTime` correctly and displays `0D`. The client still works fine with correct expiry. This is a display bug in the panel, not an actual expiry issue. Don't waste time "fixing" it — verify expiry by checking the client in the panel UI directly.
 - 3x-ui API needs JSON.stringify(settings) — raw objects cause silent 400s
@@ -391,10 +397,20 @@ After completing changes to a project, the user expects a downloadable backup fi
 - **Auto-fill fields MUST remain editable** — User said: "آدرس پنل هم خودکار پر بشه هم کاربر بتونه ادرس جدید بذاره" — never use `readonly` on auto-filled inputs
 - **3x-ui login endpoint varies by fork** — could be `/login`, `/managepanel/login`, or `/managepanel/api/login` — test each one
 - **CSRF tokens** — React-based 3x-ui forks (v3.4.2+) require CSRF token from `<meta name="csrf-token">` in login page HTML before login request
+- **Xray Core cross-compilation needs matching Go version** — Xray-core's `go.mod` may require Go 1.23+ while system has 1.22. Error: "go: download go1.26: toolchain not available". Fix: use pre-built binaries from GitHub releases instead of compiling. See `references/android-vpn-app.md`
+- **ARM32 binary often unavailable** — Latest Xray releases frequently drop ARM32 (armeabi-v7a). Covers ~99% of modern devices anyway (ARM64 + x86_64 + x86)
+- **Gradle 8.0 + Java 21 = crash** — "Unsupported class file major version 65". Use Gradle 8.5+ for Java 21 support
+- **`gradle/actions/setup-gradle@v3` IGNORES wrapper version** — It installs its own Gradle 9.x regardless of gradle-wrapper.properties. Causes "Cannot mutate the dependencies of configuration" error with older AGP. Fix: download Gradle directly via curl in workflow, add to PATH. See `references/android-vpn-app.md` for working workflow.
+- **gradle-wrapper.jar from random repos is often corrupt** — Error: "no main manifest attribute" or "Invalid or corrupt jarfile". The jar from nicovince/gradle-wrapper (319K) looked valid but was corrupt. Only63KB jars from official Gradle distributions work. Fix: download from `services.gradle.org` or use direct Gradle install in CI.
+- **AGP version must match Gradle version** — AGP 8.1.x requires Gradle 8.2+, AGP 7.4.x requires Gradle 7.6+. Error: "Minimum supported Gradle version is 8.2. Current version is 7.6.3". Pin both versions together.
+- **AndroidManifest `@mipmap/ic_launcher` needs actual resource files** — AAPT error: "resource mipmap/ic_launcher not found". Must provide ic_launcher in mipmap-* dirs OR use built-in Android drawable: `@android:drawable/ic_menu_manage`. Fastest fix for CI builds.
 
 ## Reference Files
+- `references/android-vpn-app.md` — Android VPN app project structure (Kotlin + Xray Core)
 - `references/three-x-ui-api.md` — Full API endpoints and request/response formats
 - `references/vercel-api.md` — Vercel API notes (v8 file retrieval, project management)
 - `references/dark-theme-css.md` — Dark theme CSS patterns, opacity values, auto-fill rules
 - `references/telegram-distribution.md` — Full script for sending + pinning VPN configs to Telegram channels
+- `references/vless-url-parsing.md` — VLESS URL parsing, conversion to Xray JSON, padding bandwidth impact
+- `references/npvt-format.md` — NapsterNetV encrypted config format details
 - `templates/inbound.json` — Complete VLESS+XHTTP+Reality inbound template with placeholders

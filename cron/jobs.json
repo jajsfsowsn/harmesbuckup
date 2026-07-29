@@ -22,17 +22,17 @@
       "schedule_display": "0 */12 * * *",
       "repeat": {
         "times": null,
-        "completed": 3
+        "completed": 4
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-07-27T02:48:35.568267+00:00",
-      "next_run_at": "2026-07-29T12:00:00+00:00",
-      "last_run_at": "2026-07-28T12:00:55.668950+00:00",
-      "last_status": "error",
-      "last_error": "RuntimeError: HTTP 500: [500]: {\"type\":\"error\",\"error\":{\"type\":\"error\",\"message\":\"Internal server error\"}}",
+      "next_run_at": "2026-07-30T00:00:00+00:00",
+      "last_run_at": "2026-07-29T00:01:11.214757+00:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "telegram",
       "origin": {
@@ -49,5 +49,5 @@
       "fire_claim": null
     }
   ],
-  "updated_at": "2026-07-29T00:00:32.622729+00:00"
+  "updated_at": "2026-07-29T12:00:04.045610+00:00"
 }
