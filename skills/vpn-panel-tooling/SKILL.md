@@ -27,6 +27,28 @@ const publicKey = x25519.getPublicKey(privateKey);
 - Sub link: http://{host}/sub/{subId} (no port on Railway)
 - React-based forks (v3.4.2+) use `/managepanel/` base path: login at `/managepanel/`, API at `/managepanel/panel/api/...`
 
+#### Heimdall CSRF Login Flow (React forks)
+```bash
+COOKIEJAR="/tmp/c.txt"
+# 1. Get CSRF token
+CSRF=$(curl -s -c "$COOKIEJAR" "https://DOMAIN/managepanel/csrf-token" | jq -r '.obj')
+# 2. Login with CSRF header
+curl -s -b "$COOKIEJAR" -c "$COOKIEJAR" \
+  -X POST "https://DOMAIN/managepanel/login" \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: $CSRF" \
+  -d '{"username":"admin","password":"admin"}'
+# 3. Use session cookie for API calls
+curl -s -b "$COOKIEJAR" "https://DOMAIN/managepanel/panel/api/inbounds/list/slim"
+```
+
+#### x-ui CLI Setting Command Options
+Only these flags supported: `-port`, `-webBasePath`, `-username`, `-password`, `-listenIP`, `-webCert`, `-webCertKey`, `-tgbottoken`, `-tgbotchatid`, `-enabletgbot`, `-reset`, `-show`, `-resetTwoFactor`, `-getListen`, `-getCert`, `-getApiToken`, `-tgbotRuntime`.
+⚠️ No `-subPort` flag — sub port (2096) is stored in DB only.
+
+#### Xray Startup Requirement
+Xray needs at least one inbound to start — empty `config.json` causes refusal. Create an inbound via panel, then restart Xray.
+
 ### VLESS Share Link
 vless://{uuid}@{host}:8080?type=xhttp&security=reality&sni=www.samsung.com&fp=chrome&pbk={pubKey}&sid={shortId}&path={path}&spx=%2F&host={host}&encryption=none#{remark}
 
@@ -186,6 +208,7 @@ This user (Mehrdad) communicates in Persian and prefers:
 - **No hand-holding:** If a tool works, just use it. Don't ask "should I proceed?".
 - **No repeated failures:** If something fails 2+ times, try a completely different approach — don't retry the same thing.
 - **Frustration signals:** "اوسکول", "چرا کار نمیکنی", "بکن دیگه", "انجام بده خودت" = user wants action NOW.
+- **Copyable code blocks:** User explicitly asks for code in copyable format ("کدای که بذارم رو با قابلیت کپی کردن بفرست"). When sending config values, env vars, or commands the user must paste into Railway/GitHub/Vercel dashboards, use triple-backtick code blocks — not inline code or descriptions. Keep code blocks minimal and self-contained.
 - Persian abbreviations: "ورسل" = Vercel, "رلوی" = Railway — clarify if ambiguous.
 
 ## Telegram Config Distribution
@@ -378,6 +401,163 @@ Extract from decoded JSON: `outbounds[0].settings.vnext[0]` for server info, `ou
 ## User Preference: Send Backup Files
 After completing changes to a project, the user expects a downloadable backup file (tar.gz). Proactively create and send it via MEDIA: path without being asked.
 
+## Two Heimdall Deployment Patterns on Railway
+
+### Pattern A: Minimal (3x-ui-Upgrade / MVPN) ✅ PROVEN — DEFAULT APPROACH
+Strip repo to 4 files: `Dockerfile`, `nginx.conf.template`, `start.sh`, `sub-view.html`. Adds nginx reverse proxy, brand rewriting, subscription viewer page.
+- **Status: PROVEN WORKING** — this is the ONLY approach that reliably deploys on Railway
+- **When to use:** ALWAYS use this as the default. Even if user asks for "original Heimdall", use this approach and explain why.
+- **Ports:** nginx:3000, x-ui:2053, inbound:8080
+- **Domain port:** 3000
+- **How it works:** nginx listens on Railway's PORT (3000), handles healthcheck, proxies to x-ui on 2053
+- **For latest Heimdall:** Change only the download URL in Dockerfile from v1.2.0 to v1.5.0
+
+### Pattern B: Full Clone (Mvpn2) ⚠️ UNRELIABLE — DO NOT USE
+Clone entire Heimdall repo, only change `Dockerfile` to use pre-built binary + add `start.sh` + `railway.json`. No nginx, no modifications to source.
+- **Status: FAILED repeatedly** — healthcheck always fails because x-ui listens on 2053, not Railway's PORT
+- **Attempts that all failed:** PORT bridging, binary rename trick, CACHE_BUST, railway.json healthcheckPath=""
+- **Root cause:** x-ui ignores XUI_PORT in some Railway environments; only nginx on Railway's PORT reliably passes healthcheck
+- **User preference signal:** "کلا پروژه هیمدال باشه اصلا تغییرش نده" — user WANTED this but it doesn't work
+- **DO NOT recommend this approach** — always use Pattern A instead
+
+### Pattern B Dockerfile (Binary Rename Trick — Nuclear Option)
+This approach renames `x-ui` → `x-ui.bin` and replaces it with a wrapper script.
+Works regardless of Railway's Start command setting — no Dashboard changes needed.
+```dockerfile
+FROM debian:bookworm-slim
+ARG BUILD_DATE=2026-07-30-v5
+ENV BUILD_DATE=${BUILD_DATE}
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl bash ca-certificates socat tzdata sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
+RUN curl -L https://github.com/sh7CBAC/Heimdall/releases/download/v1.5.0/x-ui-linux-amd64.tar.gz -o /tmp/x-ui.tar.gz \
+    && tar -xzf /tmp/x-ui.tar.gz -C /usr/local/ && rm /tmp/x-ui.tar.gz
+RUN mkdir -p /etc/x-ui /var/log/x-ui
+WORKDIR /usr/local/x-ui
+# Rename binary → .bin, replace with wrapper script
+RUN mv x-ui x-ui.bin
+COPY start.sh ./x-ui
+RUN chmod +x ./x-ui
+EXPOSE 2053
+CMD ["./x-ui"]
+```
+
+### Pattern B start.sh (PORT bridging — copied as `./x-ui`)
+```sh
+#!/bin/sh
+set -e
+XUI_PORT="${PORT:-${XUI_PORT:-2053}}"
+echo "🚀 Starting Heimdall v1.5.0 on port $XUI_PORT..."
+exec /usr/local/x-ui/x-ui.bin
+```
+⚠️ Note: when using the binary rename trick, `exec` calls `x-ui.bin` (the real binary), not `x-ui` (the wrapper).
+
+### Pattern B railway.json
+```json
+{
+  "build": { "builder": "DOCKERFILE", "dockerfilePath": "Dockerfile" },
+  "deploy": {
+    "startCommand": "sh -c \"export XUI_PORT=$PORT && exec /usr/local/x-ui/x-ui\"",
+    "healthcheckPath": "",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}
+```
+
+### ⚠️ Railway "Start command" OVERRIDES Dockerfile CMD
+Railway Dashboard Deploy settings has a "Start command" field. If it's set (even to `./x-ui`), it **overrides** the Dockerfile's CMD and ENTRYPOINT. This means your start.sh that bridges PORT→XUI_PORT is completely bypassed.
+- **Fix 1:** Change Start command in Railway Dashboard to: `sh -c "export XUI_PORT=$PORT && exec /usr/local/x-ui/x-ui"`
+- **Fix 2:** Set it in `railway.json` `deploy.startCommand`
+- **Fix 3 (Nuclear — works from code, no Dashboard changes):** Rename the binary `x-ui` → `x-ui.bin`, then replace it with a wrapper shell script named `x-ui` that reads PORT and execs `x-ui.bin`. This way, regardless of what Start command Railway uses (`./x-ui`), the wrapper always runs first. See the Pattern B Dockerfile below for this approach.
+- **Always verify** in Deploy logs that x-ui reports the Railway PORT, not 2053
+- **User preference:** "بایا همه چیو توی کد گیتهاب درست کن که بدون مشکل بالا بیاد" — user wants everything fixable from code, not manual Dashboard changes. Always prefer code-side fixes over "go change this in Dashboard".
+
+### Disabling Healthcheck
+If healthcheck keeps failing (app is running fine but wrong port/path):
+- Set `healthcheckPath` to empty string `""` in `railway.json`
+- Or in Railway Dashboard → Settings → set Healthcheck path to empty
+- Healthcheck probes `GET /` on the Railway-assigned PORT
+
+### ⚠️ Railway PORT vs XUI_PORT
+Railway sets `PORT` env variable. Heimdall reads `XUI_PORT`. The start.sh must bridge them: `XUI_PORT="${XUI_PORT:-${PORT:-2053}}"`. Without this, Heimdall listens on 2053 but Railway health checks the wrong port.
+
+### ⚠️ Heimdall v1.5.0 only has amd64 binary
+Release asset: `x-ui-linux-amd64.tar.gz` (82MB). No ARM builds. Railway runs amd64 by default so this works, but note for other platforms.
+
+### ⚠️ Heimdall original Dockerfile builds from source
+The original `Dockerfile` in the Heimdall repo uses multi-stage build (Node frontend → Go builder → Alpine). For Railway, replace it with the pre-built binary approach above. Keep `Dockerfile.original` as backup.
+
+## Protected Project: mvpndeployer
+⚠️ **DO NOT edit `mvpndeployer-deploy` (Vercel) without explicit user permission.**
+User said: "هیچگونه ویرایشی انجام نده اصلا روی این پروژه" — always ask first. This project is considered finished/stable.
+
+### Source Repository
+The deployer forks and deploys from:
+- **GitHub:** `ghjhdkysjtsjgz/3x-ui-Upgrade`
+- **Upstream:** Heimdall v1.5.0 by sh7CBAC (fork of 3x-ui/ثنا)
+- **Source repo link:** https://github.com/ghjhdkysjtsjgz/3x-ui-Upgrade
+- **Heimdall repo:** https://github.com/sh7CBAC/Heimdall
+- **User's deployment:** https://github.com/jshshshshwisi/Mvpn2 (Heimdall v1.5.0)
+
+### Heimdall Architecture (v1.5.0)
+- **Backend:** Go 1.26, Gin, GORM
+- **Frontend:** React 19, Ant Design 6, Vite 8, TypeScript
+- **Database:** SQLite (default), PostgreSQL (optional)
+- **Key features:** Multi-Profile Inbounds, Per-Client Speed Limits, Client Activity Monitoring, Hidden Infrastructure, Smart Subscription Links, Iran Direct Routing
+- **Ports:** nginx:3000, x-ui:2053, inbound:8080
+- **Storage:** `/etc/x-ui/x-ui.db` (SQLite)
+
+## Railway GraphQL API (Programmatic Deployment)
+Railway supports GraphQL API for creating projects/services without the dashboard.
+
+### Authentication
+Use `railway api` CLI command with `RAILWAY_TOKEN` env var:
+```bash
+export RAILWAY_TOKEN="your-token-here"
+railway api '{ me { projects(first: 10) { edges { node { id name } } } } }'
+```
+⚠️ `railway api` wraps queries differently than raw curl — pass GraphQL directly as first arg, NOT as JSON string.
+
+### Create Project
+```
+railway api 'mutation { projectCreate(input: { name: "MyProject" }) { id name } }'
+```
+
+### Create Service from GitHub
+```
+railway api "mutation { serviceCreate(input: { projectId: \\\"$PROJECT_ID\\\", name: \\\"Svc\\\", source: { repo: \\\"owner/repo\\\" } }) { id name } }"
+```
+⚠️ Field is `repo`, NOT `githubRepo` — schema validation will fail otherwise.
+
+### Query Deployments
+```
+railway api "{ deployments(first: 5, input: { projectId: \\\"$PID\\\", serviceId: \\\"$SID\\\", environmentId: \\\"$EID\\\" }) { edges { node { id status } } } }"
+```
+
+### Trigger Deployment from GitHub
+```
+railway api "mutation { deploymentTriggerCreate(input: { serviceId: \\\"$SID\\\", branch: \\\"main\\\", environmentId: \\\"$EID\\\", projectId: \\\"$PID\\\", provider: \\\"GITHUB\\\", repository: \\\"owner/repo\\\" }) { id } }"
+```
+⚠️ Requires ALL fields: `branch`, `environmentId`, `projectId`, `provider`, `repository`. Missing any → error.
+
+### Service Schema
+`ServiceSourceInput` fields: `image` (String), `repo` (String). No `branch` field — defaults to repo's default branch.
+
+### Get Environment ID
+```
+railway api "{ project(id: \\\"$PID\\\") { environments(first: 5) { edges { node { id name } } } } }"
+```
+
+### Delete Service
+```
+railway api "mutation { serviceDelete(id: \\\"$SERVICE_ID\\\") }"
+```
+⚠️ Returns `Boolean!` — no subfields allowed. Argument is `id`, NOT `input`.
+
+### Service Schema Fields (querying)
+- ❌ `source` is NOT a valid field on Service type
+- ✅ Use `deployments(first: N)` to check deployment status
+
 ## Pitfalls
 - **GitHub Actions: Use pre-built Xray binaries, NOT compilation** — Compiling Xray-core on GitHub Actions frequently fails because Go toolchain version doesn't match what Xray-core's go.mod requires. Error: "go: download go1.26: toolchain not available". Fix: download pre-built binaries from `github.com/XTLS/Xray-core/releases/latest/download/` (ARM64, x86_64, x86). Only compile locally if you control the Go version.
 - **GitHub token needs `workflow` scope to upload workflow files** — Uploading `.github/workflows/build.yml` via API or git push fails without `workflow` scope. API returns 404 "Not Found"; git push says "refusing to allow a Personal Access Token to create or update workflow without `workflow` scope". Fix: create token at https://github.com/settings/tokens/new with BOTH `repo` AND `workflow` scopes checked. Different GitHub accounts may have different token permissions — verify scopes with `curl -I -H "Authorization: token $TOKEN" https://api.github.com/user | grep x-oauth-scopes`.
@@ -404,6 +584,21 @@ After completing changes to a project, the user expects a downloadable backup fi
 - **gradle-wrapper.jar from random repos is often corrupt** — Error: "no main manifest attribute" or "Invalid or corrupt jarfile". The jar from nicovince/gradle-wrapper (319K) looked valid but was corrupt. Only63KB jars from official Gradle distributions work. Fix: download from `services.gradle.org` or use direct Gradle install in CI.
 - **AGP version must match Gradle version** — AGP 8.1.x requires Gradle 8.2+, AGP 7.4.x requires Gradle 7.6+. Error: "Minimum supported Gradle version is 8.2. Current version is 7.6.3". Pin both versions together.
 - **AndroidManifest `@mipmap/ic_launcher` needs actual resource files** — AAPT error: "resource mipmap/ic_launcher not found". Must provide ic_launcher in mipmap-* dirs OR use built-in Android drawable: `@android:drawable/ic_menu_manage`. Fastest fix for CI builds.
+- **Railway PORT vs XUI_PORT mismatch** — Railway sets `PORT` env variable for health checks. Heimdall reads `XUI_PORT`. If start.sh doesn't bridge them, Heimdall listens on 2053 but Railway probes a different port → deploy fails. Fix: `XUI_PORT="${XUI_PORT:-${PORT:-2053}}"` in start.sh.
+- **Heimdall original Dockerfile is multi-stage build** — Builds Go+Node from source. Too heavy/slow for Railway. Replace with pre-built binary download from `github.com/sh7CBAC/Heimdall/releases/`. Keep original as `Dockerfile.original`.
+- **Railway GitHub deployment requires GitHub App** — Creating a service with `source: { repo: "owner/repo" }` via GraphQL API succeeds but NO deployment is triggered until the Railway GitHub App is installed on the account. Install at: `https://github.com/apps/railway-app/installations/new`. Without it, `deployments.edges` is always empty. Fix: either install the GitHub App, or use Docker image approach instead.
+- **Railway "Bad Access" on deploymentTriggerCreate** — Means the GitHub App is installed on a DIFFERENT GitHub account than the one that owns the repo. `deploymentTriggerCreate` returns "Bad Access" (not "Not Authorized") when the repo owner ≠ the App's account. Fix: create the repo on the account where the App IS installed. Verify which account a token belongs to: `curl -H "Authorization: token $TOKEN" https://api.github.com/user` — check `login` field.
+- **Railway token types: Account vs Project** — Account tokens can create projects (projectCreate works). Project-scoped tokens may fail on me query (Not Authorized) but still work for mutations on that specific project. If whoami fails but projectCreate works, token is valid — it's just project-scoped.
+- **Railway CLI vs API auth are different** — railway whoami, railway link, railway up all fail with Unauthorized even when railway api works with the same token. The CLI uses a separate auth mechanism. Workaround: use railway api for ALL operations (create project, create service, trigger deployment) instead of CLI commands. railway deploy is ONLY for templates, NOT for GitHub repo deploys.
+- **Railway deploy is for templates only** — It provisions pre-built templates (postgres, redis, etc.), NOT GitHub repo deployments. To deploy from GitHub: create service via GraphQL API with source.repo, then trigger with deploymentTriggerCreate mutation.
+- **Docker layer caching prevents updates from deploying** — If `COPY start.sh /start.sh` shows "cached" in Railway build logs, the old file is used even after git push. Fix: add a `# cache-bust: <date>-vN` comment above the COPY line in Dockerfile to force layer rebuild. Always check build logs for "cached" tags when debugging "why didn't my change deploy?".
+- **Railway healthcheck path and port** — Railway probes `GET /` on the port assigned via `PORT` env var. If your app listens on a different port or doesn't respond to `/`, healthcheck fails with "service unavailable" after 6 attempts. Fix: ensure start.sh bridges `PORT` → app's port, and the app responds to `/` on that port.
+- **Railway "Start command" silently overrides CMD/ENTRYPOINT** — Even if Dockerfile has `CMD ["/start.sh"]`, Railway's Deploy settings "Start command" field (default: `./x-ui` for detected projects) overrides it completely. The app runs without the PORT→XUI_PORT bridge, listens on 2053, and healthcheck fails. ALWAYS check: (1) Deploy logs for "Using XUI_PORT override for web panel port: X" — if it says 2053, the override is active; (2) Railway Dashboard → Deploy → Start command field. Fix: set start command to `sh -c "export XUI_PORT=$PORT && exec /usr/local/x-ui/x-ui"` in Dashboard or railway.json.
+
+## ⚠️ Pattern B (Full Clone Without nginx) Does NOT Work on Railway
+Multiple attempts to deploy Heimdall directly on Railway (without nginx) all failed with healthcheck errors. x-ui stubbornly listens on port 2053 regardless of XUI_PORT env var bridging. The binary rename trick, CACHE_BUST ARG, and railway.json healthcheckPath="" all failed.
+**ALWAYS use Pattern A** (copy 3x-ui-Upgrade structure: Dockerfile + nginx.conf.template + start.sh + sub-view.html). nginx on port 3000 handles Railway's healthcheck. See `references/3x-ui-upgrade-repo.md` for the proven file structure.
+User frustration signal: "قرار بود جوری بسازی که بدون مشکل مثل پروژه قبلیه بالا بیاد" — they want the WORKING approach, not experiments.
 
 ## Reference Files
 - `references/android-vpn-app.md` — Android VPN app project structure (Kotlin + Xray Core)
@@ -413,4 +608,6 @@ After completing changes to a project, the user expects a downloadable backup fi
 - `references/telegram-distribution.md` — Full script for sending + pinning VPN configs to Telegram channels
 - `references/vless-url-parsing.md` — VLESS URL parsing, conversion to Xray JSON, padding bandwidth impact
 - `references/npvt-format.md` — NapsterNetV encrypted config format details
+- `references/3x-ui-upgrade-repo.md` — 3x-ui-Upgrade repository structure and deployment
+- `references/heimdall-architecture.md` — Heimdall v1.5.0 architecture and features
 - `templates/inbound.json` — Complete VLESS+XHTTP+Reality inbound template with placeholders

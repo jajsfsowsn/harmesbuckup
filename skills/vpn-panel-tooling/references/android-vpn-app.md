@@ -138,6 +138,26 @@ dependencies {
 }
 ```
 
+## VpnService Class Naming
+⚠️ **DO NOT name your class `VpnService`** — it conflicts with `android.net.VpnService`. Use `MyVpnService` or another distinct name. The AndroidManifest must reference the custom name: `android:name=".MyVpnService"`.
+
+## Network Security Config
+Android 9+ blocks cleartext HTTP by default. For VPN apps connecting to local Xray (127.0.0.1:10808), add:
+```xml
+<!-- res/xml/network_security_config.xml -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors><certificates src="system" /></trust-anchors>
+    </base-config>
+</network-security-config>
+```
+Reference in manifest: `android:networkSecurityConfig="@xml/network_security_config"` + `android:usesCleartextTraffic="true"`.
+
+## Android Icon Resources
+⚠️ **Do NOT reference `@mipmap/ic_launcher` without providing actual mipmap resource files** — AAPT error: "resource mipmap/ic_launcher not found". Two options:
+1. Provide ic_launcher.png in `mipmap-hdpi`, `mipmap-xhdpi`, etc.
+2. Use built-in Android drawable: `@android:drawable/ic_menu_manage` (fastest for CI builds)
+
 ## VpnService Foreground Notification
 Required for Android 8+ to keep VPN alive:
 - Create NotificationChannel (IMPORTANCE_LOW)

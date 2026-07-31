@@ -1,7 +1,7 @@
-Name: Mehrdad Mohammadzadeh (مهرداد محمدزاده). Telegram: @saweg78. Language: Persian (Farsi), informal/casual style. Works with VPN/XRay infrastructure — deploys 3x-ui panels on Railway, builds frontend tools on Vercel. GitHub: mehrdad6. Vercel project: mvpndeployer-deploy. Has Vercel token. Uses NapsterNetV (NPV Tunnel) Android app.
+Name: Mehrdad Mohammadzadeh (مهرداد محمدزاده). Telegram: @saweg78. Language: Persian (Farsi), informal/casual. VPN/XRay — deploys 3x-ui panels on Railway, frontend on Vercel. GitHub: mehrdad6, jshshshshwisi. YouTube: @MVPNHUB. Grows tomatoes. Uses NapsterNetV (NPV Tunnel). Prefers SHORT responses — "بزن بریم" energy, diagnose FAST.
 §
-User prefers SHORT, DIRECT responses in Persian. Gets frustrated with long explanations — "چرا کار نمیکنی؟" signals they want action, not analysis. Use "بزن بریم" energy. When something breaks, diagnose FAST and fix, don't explain the theory. Informal tone OK — they use slang ("اوسکول", "کسکش").
+User grows tomatoes in backyard. YouTube: @MVPNHUB. Railway account: lucky-youth. Prefers autonomous execution — "خودت انجام بده" = do it yourself.
 §
-Name: Mehrdad Mohammadzadeh (مهرداد محمدزاده). Language: Persian (Farsi), informal/casual style. Telegram: @saweg78. Works with VPN/XRay infrastructure — deploys 3x-ui panels on Railway, builds frontend tools on Vercel. GitHub: mehrdad6. Vercel project: mvpndeployer-deploy (auto-deploys 3x-ui panels to Railway with VLESS+XHTTP+Reality config builder). Has Vercel token for deployment.
+User prefers everything to work from code without manual Dashboard configuration. Gets frustrated with repeated deployment errors. Wants autonomous execution — "خودت انجام بده" = do it yourself.
 §
-Uses NapsterNetV (NPV Tunnel) Android app for VPN connections. NPVT file format uses White-Box AES CTR encryption — cannot be reverse-engineered without the app's internal lookup tables (tables.json).
+User prefers copy-paste ready code blocks when sharing configs/commands (\"کدای که بذارم رو با قابلیت کپی کردن بفرست\"). Use triple-backtick code blocks for Railway/GitHub/Vercel dashboard values.

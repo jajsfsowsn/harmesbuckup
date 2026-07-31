@@ -1,13 +1,10 @@
-Git clone with embedded PAT (https://ghp_xxx@github.com/...) requires `GIT_TERMINAL_PROMPT=0` to avoid hanging on credential prompts. Use `--depth 1` for faster initial clone. Port 22 often blocked in cloud environments, use HTTPS (port 443) instead.
-§
-Works with VLESS+XHTTP+Reality VPN configs on 3x-ui panels hosted on Railway. GitHub repo for backups: github.com/jajsfsowsn/harmesbuckup. Backup cron job runs every 12h (job_id: 1810abe48302).
+Git clone: `GIT_TERMINAL_PROMPT=0` + `--depth 1`. HTTPS not SSH. GitHub: jajsfsowsn (primary), jshshshshwisi ([REDACTED_GITHUB_TOKEN_1], workflow scope), hzhhshsqioqjs ([REDACTED_GITHUB_TOKEN_2], Railway GitHub App). VLESS+XHTTP+Reality VPN on Railway. Backup cron 12h (1810abe48302) → jajsfsowsn/harmesbuckup.
 §
 User's Vercel account: mehrdad6. Token: [REDACTED_VERCEL_TOKEN]. Main project: mvpndeployer-deploy. Padding: 0-0. Uses NapsterNetV. GitHub accounts: jajsfsowsn (primary), jshshshshwisi (workflow scope). Android VPN app: github.com/jshshshshwisi/RofghaVPN — pre-built Xray binaries via GitHub Actions.
 §
-Vercel deployer (mvpndeployer-deploy): deploys 3x-ui-Upgrade to Railway, VLESS+XHTTP+Reality, client "Mvpn" (100GB/30days), xPaddingBytes: '0-0'. API: /api/connect, /api/deploy, /api/create-inbound, /api/tcp. Panel default: admin/admin. Inbound port 8080. Path: /mehrdad.
 §
-3x-ui panel API (this fork): login at /login (POST JSON), CSRF from /csrf-token. Inbound list: GET /panel/api/inbounds/list/slim. Add inbound: POST /panel/api/inbounds/add (form-urlencoded). Delete: POST /panel/api/inbounds/del/{id}. Restart: POST /panel/api/xray/restart. Cookie: 3x-ui.
+Mvpn2: Heimdall v1.5.0 for Railway. PRIMARY repo: hzhhshsqioqjs/Mvpn2 (GitHub App installed). ALSO: hzhhshsqioqjs/Heimdall-Railway. PREVIOUS: jshshshshwisi/Mvpn2 (no GitHub App). Railway project: lucky-youth (5d7c82d4). Railway token: [REDACTED_RAILWAY_TOKEN_SHORT] (project-scoped, can't trigger deploys or list projects). Structure=3x-ui-Upgrade copy (nginx+x-ui). Ports: nginx=${PORT:-3000}, panel=2053, sub=2096, inbound=8080. BLOCKERS: (1) railway-app GitHub App must be installed on repo owner (2) Docker cache bust: use ARG before COPY (3) Healthcheck needs nginx on PORT. Heimdall API login: GET csrf-token → POST /managepanel/login with X-CSRF-Token. API routes: /managepanel/panel/api/...
 §
-Hermes backup cron job (ID: 1810abe48302) runs every 12h, backs up ~/.hermes to GitHub repo jajsfsowsn/harmesbuckup via HTTPS. Backup script at /data/hermes-backup/backup.sh. Backs up: memories, skills, config, SOUL.md, sessions, cron. Excludes state.db (tokens). GitHub PAT was provided for this repo.
+3x-ui panel API: login /login (POST JSON), CSRF /csrf-token. Inbounds: GET /panel/api/inbounds/list/slim. Add: POST /panel/api/inbounds/add. Delete: POST /panel/api/inbounds/del/{id}. Restart: POST /panel/api/xray/restart. Cookie: 3x-ui.
 §
-User prefers autonomous execution — when asked to do something, DO IT, don't suggest alternatives or ask them to do it. "خودت انجام بده" = do it yourself, not "you do this step".
+User prefers autonomous execution — when asked, DO IT, don't suggest alternatives. "خودت انجام بده" = do it yourself. User gets frustrated with repeated Railway deployment errors and wants everything fixed from code without manual Dashboard steps.
