@@ -1,6 +1,21 @@
-# 3x-ui API Reference
+# 3x-ui / Heimdall API Reference
 
-## Authentication
+## ⚠️ API Path Variants
+Two different API structures exist. Use the right one based on which fork you're targeting:
+
+| Feature | Older 3x-ui / Format B | Heimdall v1.5.0 (sh7CBAC) |
+|---------|----------------------|---------------------------|
+| CSRF | `<meta>` tag in HTML | GET `/managepanel/csrf-token` → `{obj: token}` |
+| Login | POST `/managepanel/api/login` | POST `/managepanel/login` |
+| List inbounds | GET `/panel/api/inbounds/list/slim` | GET `/managepanel/panel/api/inbounds/list/slim` |
+| Get inbound | — | GET `/managepanel/panel/api/inbounds/get/{id}` |
+| Update inbound | POST `/panel/api/inbounds/update/{id}` | POST `/managepanel/panel/api/inbounds/update/{id}` |
+| Server status | POST `/panel/api/server/getData` | GET `/managepanel/panel/api/server/status` |
+| Restart Xray | POST `/panel/api/xray/restart` | POST `/managepanel/panel/api/server/restartXrayService` |
+| Xray logs | POST `/panel/api/server/logs/{count}` | POST `/managepanel/panel/api/server/xraylogs/{count}` |
+| OpenAPI spec | — | GET `/managepanel/panel/api/openapi.json` |
+
+## Heimdall v1.5.0 Authentication Flow
 
 ```
 POST /login
@@ -163,3 +178,27 @@ The subscription endpoint returns base64-encoded VLESS config with metadata appe
 ```
 
 ⚠️ The `⏳0D` display is a known bug — the panel's subscription generator sometimes fails to parse `expiryTime` and shows 0 days even when the client is valid for 30 days. **Don't chase this** — the client works correctly.
+
+## Heimdall v1.5.0 Client Update Validation
+When updating inbound with new client via Heimdall v1.5.0 API, strict type validation applies:
+
+```python
+# CORRECT
+client = {
+    "email": "default",
+    "enable": True,
+    "id": str(uuid.uuid4()),
+    "flow": "",
+    "limitIp": 0,
+    "subId": "",
+    "tgId": 0,           # MUST be int (0), NOT string ("")
+    "totalGB": 0,
+    "expiryTime": 0
+}
+
+# WRONG — will fail with "json: cannot unmarshal string into Go struct field Client.tgId of type int64"
+client["tgId"] = ""  # ❌ string
+client["port"] = "8080"  # ❌ string (must be int)
+```
+
+`settings`, `streamSettings`, `sniffing` can be dict objects (not JSON strings) — Heimdall v1.5.0 accepts both formats.

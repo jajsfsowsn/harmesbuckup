@@ -297,6 +297,56 @@ Returns full VLESS URI. Check `#remark|📊100.00GB|⏳30D` suffix for expiry st
 ### Check Panel Inbounds via API
 Login → GET `/panel/api/inbounds/list/slim` → inspect clients array for `expiryTime`, `enable`, `totalGB` values.
 
+## Heimdall v1.5.0 API Endpoints (React fork)
+These are the CORRECT endpoints for Heimdall v1.5.0 (sh7CBAC fork). The paths are different from older 3x-ui forks.
+
+### Authentication Flow
+```bash
+# 1. Get CSRF token
+CSRF=$(curl -s -c cookies.txt "https://DOMAIN/managepanel/csrf-token" | python3 -c "import json,sys;print(json.load(sys.stdin)['obj'])")
+# 2. Login
+curl -s -b cookies.txt -c cookies.txt -X POST "https://DOMAIN/managepanel/login" \
+  -H "Content-Type: application/json" -H "X-CSRF-Token: $CSRF" \
+  -d '{"username":"admin","password":"admin"}'
+# 3. All subsequent API calls use session cookie + CSRF token header
+```
+
+### Server Endpoints
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/managepanel/panel/api/server/status` | GET | Xray running status, version, uptime |
+| `/managepanel/panel/api/server/restartXrayService` | POST | Restart Xray core |
+| `/managepanel/panel/api/server/stopXrayService` | POST | Stop Xray core |
+| `/managepanel/panel/api/server/xraylogs/{count}` | POST | Get Xray logs (count = number of lines) |
+| `/managepanel/panel/api/server/getConfigJson` | GET | Get current Xray config JSON |
+| `/managepanel/panel/api/server/getNewUUID` | GET | Generate new UUID |
+
+### Inbound Endpoints
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/managepanel/panel/api/inbounds/list/slim` | GET | List all inbounds (slim) |
+| `/managepanel/panel/api/inbounds/get/{id}` | GET | Get specific inbound with full settings |
+| `/managepanel/panel/api/inbounds/add` | POST | Create new inbound |
+| `/managepanel/panel/api/inbounds/update/{id}` | POST | Update inbound |
+| `/managepanel/panel/api/inbounds/del/{id}` | DELETE | Delete inbound |
+| `/managepanel/panel/api/inbounds/setEnable/{id}` | POST | Enable/disable inbound |
+
+### Setting Endpoints
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/managepanel/panel/api/setting/all` | POST | Get all settings |
+| `/managepanel/panel/api/setting/update` | POST | Update settings |
+
+### Client Validation Rules (Heimdall v1.5.0)
+⚠️ These fields have strict type validation:
+- `tgId`: **int64** (use `0` for empty, NOT string `""`)
+- `port`: **int** (use `8080`, NOT string `"8080"`)
+- `settings`, `streamSettings`, `sniffing`: Can be **dict objects** (not JSON strings) — Heimdall v1.5.0 accepts both
+
+### OpenAPI Spec
+Full API docs available at: `/managepanel/panel/api/openapi.json`
+Use this to discover all available endpoints and their schemas.
+
 ## Railway TCP Proxy Creation Tutorial
 When guiding users to create a TCP proxy on Railway, use this collapsible 9-step tutorial. Extract the project name dynamically from the deployed panel URL.
 
@@ -594,6 +644,9 @@ railway api "mutation { serviceDelete(id: \\\"$SERVICE_ID\\\") }"
 - **Docker layer caching prevents updates from deploying** — If `COPY start.sh /start.sh` shows "cached" in Railway build logs, the old file is used even after git push. Fix: add a `# cache-bust: <date>-vN` comment above the COPY line in Dockerfile to force layer rebuild. Always check build logs for "cached" tags when debugging "why didn't my change deploy?".
 - **Railway healthcheck path and port** — Railway probes `GET /` on the port assigned via `PORT` env var. If your app listens on a different port or doesn't respond to `/`, healthcheck fails with "service unavailable" after 6 attempts. Fix: ensure start.sh bridges `PORT` → app's port, and the app responds to `/` on that port.
 - **Railway "Start command" silently overrides CMD/ENTRYPOINT** — Even if Dockerfile has `CMD ["/start.sh"]`, Railway's Deploy settings "Start command" field (default: `./x-ui` for detected projects) overrides it completely. The app runs without the PORT→XUI_PORT bridge, listens on 2053, and healthcheck fails. ALWAYS check: (1) Deploy logs for "Using XUI_PORT override for web panel port: X" — if it says 2053, the override is active; (2) Railway Dashboard → Deploy → Start command field. Fix: set start command to `sh -c "export XUI_PORT=$PORT && exec /usr/local/x-ui/x-ui"` in Dashboard or railway.json.
+- **Sub page 404 = Docker cache issue** — When `/sub/` and `/view/` return 404 but `/managepanel/` works, it means Docker cached old layers and `sub-view.html` was never copied into the container. nginx IS running (serves panel), but static files are missing. Fix: add `RUN echo "REBUILD $(date)" > /tmp/rebuild` BEFORE the COPY commands in Dockerfile to force cache invalidation. Verify in Railway build logs: if any COPY step shows "cached", the new file wasn't deployed.
+- **Heimdall v1.5.0 API paths differ from 3x-ui** — The skill's older API reference uses paths like `/panel/api/inbounds/list` and `/panel/api/server/getData`. Heimdall v1.5.0 uses different paths: server status is `/panel/api/server/status` (GET), restart is `/panel/api/server/restartXrayService` (POST), logs are `/panel/api/server/xraylogs/{count}` (POST). Always check `/panel/api/openapi.json` for the actual schema.
+- **Heimdall v1.5.0 client validation: tgId must be int** — When updating inbound with new client via API, `tgId` field must be `0` (int), NOT `""` (string). Error: "json: cannot unmarshal string into Go struct field Client.tgId of type int64". Same for `port`: must be `8080` (int), not `"8080"` (string).
 
 ## ⚠️ Pattern B (Full Clone Without nginx) Does NOT Work on Railway
 Multiple attempts to deploy Heimdall directly on Railway (without nginx) all failed with healthcheck errors. x-ui stubbornly listens on port 2053 regardless of XUI_PORT env var bridging. The binary rename trick, CACHE_BUST ARG, and railway.json healthcheckPath="" all failed.
