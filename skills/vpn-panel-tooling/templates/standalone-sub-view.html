@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MVPN - Sub Info</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Vazirmatn',sans-serif;background:#121212;color:#fff;min-height:100vh;display:flex;justify-content:center;padding:16px}
+.c{max-width:400px;width:100%}
+.hdr{text-align:center;padding:24px 0 16px}
+.hdr h1{font-size:24px;font-weight:800;background:linear-gradient(135deg,#6c5ce7,#a29bfe);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hdr p{color:#888;font-size:12px;margin-top:4px}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#1e1e2e;border-radius:14px;margin-bottom:12px}
+.dot{width:8px;height:8px;border-radius:50%;background:#00d2a0;box-shadow:0 0 8px #00d2a0;animation:p 2s infinite}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.4}}
+.bar span{font-size:13px;color:#00d2a0;font-weight:600}
+.bar small{font-size:11px;color:#888;background:#2a2a3a;padding:3px 8px;border-radius:6px}
+.cd{background:#1e1e2e;border-radius:18px;padding:18px;margin-bottom:12px;border:1px solid rgba(255,255,255,.05)}
+.cd-t{font-size:12px;color:#888;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.qr{display:flex;justify-content:center;padding:12px 0}
+.qr canvas{border-radius:14px;padding:10px;background:#fff}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gi{background:#252536;border-radius:12px;padding:12px}
+.gi .l{font-size:10px;color:#888;margin-bottom:4px}
+.gi .v{font-size:13px;font-weight:600;direction:ltr;text-align:left}
+.gi.f{grid-column:1/-1}
+.cb{background:#0d0d15;border-radius:12px;padding:14px;direction:ltr;text-align:left;font-family:'Courier New',monospace;font-size:10px;color:#a29bfe;word-break:break-all;max-height:80px;overflow-y:auto;border:1px solid rgba(255,255,255,.05);line-height:1.8}
+.btn{width:100%;padding:13px;border:none;border-radius:14px;font-family:'Vazirmatn',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .3s;display:flex;align-items:center;justify-content:center;gap:6px}
+.bp{background:linear-gradient(135deg,#6c5ce7,#8b5cf6);color:#fff;box-shadow:0 4px 20px rgba(108,92,231,.3)}
+.bp:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(108,92,231,.4)}
+.bc{background:#252536;color:#fff;border:1px solid rgba(255,255,255,.08);margin-top:8px}
+.bc:hover{border-color:#6c5ce7}
+.al{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.al a{background:#252536;border-radius:12px;padding:12px 8px;text-align:center;text-decoration:none;color:#fff;border:1px solid rgba(255,255,255,.05);transition:all .3s}
+.al a:hover{border-color:#6c5ce7;transform:translateY(-2px)}
+.al .ai{font-size:24px;margin-bottom:4px}
+.al .an{font-size:11px;font-weight:600}
+.al .ap{font-size:9px;color:#888}
+.ft{text-align:center;padding:20px 0;color:#555;font-size:10px}
+.ft span{color:#a29bfe}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(16px);background:#00d2a0;color:#fff;padding:10px 22px;border-radius:12px;font-size:13px;font-weight:600;opacity:0;transition:all .4s;z-index:99;font-family:'Vazirmatn',sans-serif;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="c">
+  <div class="hdr"><h1>🔐 BRAND_NAME</h1><p>اطلاعات اشتراک</p></div>
+  <div class="bar"><div style="display:flex;align-items:center;gap:8px"><div class="dot"></div><span>فعال</span></div><small>PROTOCOL • SECURITY • NETWORK</small></div>
+  <div class="cd"><div class="cd-t">📱 اسکن QR</div><div class="qr"><div id="qrcode"></div></div><button class="btn bp" onclick="cc()">📋 کپی لینک اشتراک</button></div>
+  <div class="cd"><div class="cd-t">🌐 اطلاعات سرور</div><div class="g" id="info"></div></div>
+  <div class="cd"><div class="cd-t">⚙️ کانفیگ</div><div class="cb" id="cfg"></div><button class="btn bc" onclick="cc()">📋 کپی کانفیگ</button></div>
+  <div class="cd"><div class="cd-t">📲 دانلود اپ</div><div class="al">
+    <a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank"><div class="ai">🐱</div><div class="an">NekoBox</div><div class="ap">Android</div></a>
+    <a href="https://github.com/2dust/v2rayNG/releases" target="_blank"><div class="ai">📦</div><div class="an">v2rayNG</div><div class="ap">Android</div></a>
+    <a href="https://github.com/nickmessing/Shadowrocket-Android/releases" target="_blank"><div class="ai">🚀</div><div class="an">Shadowrocket</div><div class="ap">Android</div></a>
+    <a href="https://github.com/nickmessing/Shadowrocket-Android/releases" target="_blank"><div class="ai">🦊</div><div class="an">FoXray</div><div class="ap">Android</div></a>
+  </div></div>
+  <div class="ft">Powered by <span>BRAND_NAME</span> • Heimdall Panel</div>
+</div>
+<div class="toast" id="t">✅ کپی شد!</div>
+<script>
+const C="VLESS_CONFIG_URL#REMARK";
+document.getElementById("cfg").textContent=C;
+new QRCode(document.getElementById("qrcode"),{text:C,width:200,height:200,colorDark:"#1a1d27",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.H});
+// Auto-parse VLESS URL into info grid
+const u=new URL(C.replace("vless://","https://x"));
+const p=new URLSearchParams(u.search);
+const info=[
+["پروتکل","VLESS"],["امنیت",p.get("security")||"reality"],
+["شبکه",p.get("type")||"xhttp"],["پورت",u.port],
+["سرور",u.hostname],["SNI",p.get("sni")||""],
+["FP",p.get("fp")||"chrome"],["Host",p.get("host")||""],
+["Path",p.get("path")||""]
+];
+document.getElementById("info").innerHTML=info.map((e,i)=>{
+  const cls=(i===0||i===4||i===7||i===8)?'f':'';
+  return `<div class="gi ${cls}"><div class="l">${e[0]}</div><div class="v">${e[1]}</div></div>`;
+}).join("");
+function cc(){navigator.clipboard.writeText(C).then(()=>{const t=document.getElementById("t");t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500)}).catch(()=>{const a=document.createElement("textarea");a.value=C;document.body.appendChild(a);a.select();document.execCommand("copy");document.body.removeChild(a);const t=document.getElementById("t");t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500)})}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</body>
+</html>

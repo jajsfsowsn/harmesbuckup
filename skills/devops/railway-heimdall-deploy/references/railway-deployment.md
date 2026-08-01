@@ -6,10 +6,10 @@
 - **Panel**: `https://heimdall-railway-production.up.railway.app/managepanel/`
 - **Panel Login**: admin/admin
 - **GitHub repo**: `hzhhshsqioqjs/Mvpn2`
-- **GitHub token**: `[REDACTED:GitHub-PAT]` (hzhhshsqioqjs)
+- **GitHub token**: `ghp_[REDACTED]` (hzhhshsqioqjs)
 - **GitHub App**: installed on `hzhhshsqioqjs` account
-- **Railway project**: `lucky-youth` (ID: `[REDACTED:UUID]`)
-- **Railway token**: `[REDACTED:Railway-token]` (project-scoped)
+- **Railway project**: `lucky-youth` (ID: `5d7c82d4-2c4a-4008-a83d-7425adefd343`)
+- **Railway token**: `09664d3a-[REDACTED]` (project-scoped)
 
 ### 3x-ui-Upgrade (Reference/Working)
 - **URL**: `https://3x-ui-upgrade-production-e554.up.railway.app`

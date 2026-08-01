@@ -653,7 +653,59 @@ Multiple attempts to deploy Heimdall directly on Railway (without nginx) all fai
 **ALWAYS use Pattern A** (copy 3x-ui-Upgrade structure: Dockerfile + nginx.conf.template + start.sh + sub-view.html). nginx on port 3000 handles Railway's healthcheck. See `references/3x-ui-upgrade-repo.md` for the proven file structure.
 User frustration signal: "قرار بود جوری بسازی که بدون مشکل مثل پروژه قبلیه بالا بیاد" — they want the WORKING approach, not experiments.
 
+## Heimdall Official Sub Page
+Heimdall ships with the **Ourenus Sub Info** React app as its subscription page:
+- **Pre-built**: `sub_templates/ourenus/index.html` (508KB) — use this
+- **Source**: `sub_templates/ourenus-src/` (Vite + React)
+- **Download**: `curl -sL https://raw.githubusercontent.com/sh7CBAC/Heimdall/main/sub_templates/ourenus/index.html -o sub-view.html`
+- Falls back to `window.location.origin` for panel domain — works on any domain
+- **PHP version**: `sub_templates/ourenus/index.php` — proxies to panel API
+- ⚠️ **Ourenus is a dynamic React SPA** — it fetches data from `/info` and `/configs` API endpoints. If the sub server (port 2096) is not running, the page shows a loading spinner with "خطای اتصال به سرور" error. Two options: (1) use standalone template (`templates/standalone-sub-view.html`), OR (2) inject fetch/XHR overrides into the pre-built HTML (see below).
+
+### Fetch/XHR Override for Ourenus (No Sub Server Needed)
+When the sub server isn't running, inject a `<script>` at the top of the pre-built `index.html` to intercept all API calls and return hardcoded data. This lets the full Ourenus React UI work without any backend:
+
+```html
+<script>
+(function() {
+  var info = { "username": "User", "data_limit": 107374182400, "used_traffic": 0, "expire": 1893456000, "subscription_url": "#", "links": ["vless://YOUR_CONFIG_HERE"], "speedLimits": [], "connectionLimit": 0 };
+  var configs = "vless://YOUR_CONFIG_HERE";
+  // Override XMLHttpRequest
+  var _open = XMLHttpRequest.prototype.open;
+  var _send = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.open = function(m, url) { this._url = url; return _open.apply(this, arguments); };
+  XMLHttpRequest.prototype.send = function() {
+    var self = this, u = this._url || '';
+    setTimeout(function() {
+      if (u.includes('/info')) { Object.defineProperty(self, 'readyState', {get: function(){return 4}}); Object.defineProperty(self, 'status', {get: function(){return 200}}); Object.defineProperty(self, 'responseText', {get: function(){return JSON.stringify(info)}}); if (self.onreadystatechange) self.onreadystatechange(); if (self.onload) self.onload(); }
+      else if (u.includes('/configs')) { Object.defineProperty(self, 'readyState', {get: function(){return 4}}); Object.defineProperty(self, 'status', {get: function(){return 200}}); Object.defineProperty(self, 'responseText', {get: function(){return configs}}); if (self.onreadystatechange) self.onreadystatechange(); if (self.onload) self.onload(); }
+      else { _send.apply(self, arguments); }
+    }, 0);
+  };
+  // Override fetch
+  var _fetch = window.fetch;
+  window.fetch = function(url, opts) {
+    var u = typeof url === 'string' ? url : (url && url.url) || '';
+    if (u.includes('/info')) return Promise.resolve(new Response(JSON.stringify(info), {status: 200, headers: {'Content-Type': 'application/json'}}));
+    if (u.includes('/configs')) return Promise.resolve(new Response(configs, {status: 200, headers: {'Content-Type': 'text/plain'}}));
+    return Promise.resolve(new Response('{}', {status: 200, headers: {'Content-Type': 'application/json'}}));
+  };
+})();
+</script>
+```
+**Inject with Python:** `html.replace('<head>', '<head>' + inject_script, 1)` — place BEFORE the React bundle script tag.
+⚠️ Both `XMLHttpRequest` AND `fetch` must be overridden — the React app uses both depending on browser compatibility.
+⚠️ The `info` object needs `links` array (not `link`) containing the VLESS config. The React app reads `s.links[s.links.length-1]` for the last config, and `s.subscription_url` for the sub link button.
+- ⚠️ **Build OOMs on constrained servers** — `npm run build` in `ourenus-src` gets killed (exit 137) on servers with <2GB RAM. Always use the pre-built version from the repo.
+
+## Heimdall v1.5.0 API Quirks
+- **`server/getData` returns empty via API** — works in browser but returns empty/404 from curl/requests even with valid session. Use `inbounds/list/slim` instead for status checks.
+- **`restartXrayService` POST may return empty body** — it executes but response is `{"output":"","exit_code":0}`. Verify restart by querying inbound data afterward.
+- **`server/status` GET may return empty** — the OpenAPI spec lists it, but responses are inconsistent. Check Xray status indirectly via inbound client data.
+
 ## Reference Files
+- `templates/sub-view.html` — Standalone subscription info page with QR code, server info grid, copy button, and app download links. Uses Vazirmatn font, dark theme, RTL layout. Replace `VLESS_CONFIG_PLACEHOLDER` with actual VLESS URL. Auto-parses VLESS params into info grid.
+- `templates/standalone-sub-view.html` — **Template with placeholders** (`VLESS_CONFIG_URL`, `REMARK`, `BRAND_NAME`, `PROTOCOL`, `SECURITY`, `NETWORK`). Replace placeholders and deploy. Auto-parses VLESS URL into server info grid via JS. Use when Ourenus dynamic page doesn't work (sub server not running on port 2096).
 - `references/android-vpn-app.md` — Android VPN app project structure (Kotlin + Xray Core)
 - `references/three-x-ui-api.md` — Full API endpoints and request/response formats
 - `references/vercel-api.md` — Vercel API notes (v8 file retrieval, project management)
@@ -664,3 +716,4 @@ User frustration signal: "قرار بود جوری بسازی که بدون مش
 - `references/3x-ui-upgrade-repo.md` — 3x-ui-Upgrade repository structure and deployment
 - `references/heimdall-architecture.md` — Heimdall v1.5.0 architecture and features
 - `templates/inbound.json` — Complete VLESS+XHTTP+Reality inbound template with placeholders
+- `references/fetch-override.md` — Fetch/XHR override injection for Ourenus React SPA (no sub server needed)

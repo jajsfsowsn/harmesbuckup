@@ -73,6 +73,7 @@ CMD ["/start.sh"]
 ## Common Pitfalls
 1. **Hardcoding NGINX_PORT=3000** → healthcheck fails. Always use `${PORT:-3000}`
 2. **Docker layer caching** → Railway aggressively caches layers. `ARG REBUILD=<timestamp>` alone may NOT bust cached COPY layers. Use `RUN echo "REBUILD 2026-07-30-08" > /tmp/rebuild` as the FIRST instruction after FROM — this changes the instruction hash and forces all subsequent layers to rebuild. If build logs show "cached" on COPY steps, the bust failed. Also add `# cache-bust: <date>-vN` comment above each COPY line as secondary insurance.
+2b. **Don't tell users to "Clear Build Cache" from Railway Dashboard** — the option is buried/not clearly labeled. User said "این تنظیمات رو پیدا نمیکنم". Instead, fix from code: push a Dockerfile change with cache bust line and trigger redeploy. NEVER suggest manual Dashboard cache clearing.
 3. **GitHub App "Bad Access" error** → means App is installed on the WRONG GitHub account. `deploymentTriggerCreate` returns "Bad Access" when the repo owner ≠ the account where the App is installed. Fix: create the repo on the account where the App IS installed (or install the App on the repo owner's account). Verify which account a token belongs to: `curl -H "Authorization: token $TOKEN" https://api.github.com/user`
 4. **GitHub App not installed** → deploy via Dashboard manually. Token-based API can create projects/services but can't trigger GitHub deploys.
 5. **Missing nginx** → x-ui on 2053 doesn't respond to healthcheck. nginx is REQUIRED as reverse proxy.
@@ -109,6 +110,15 @@ nginx routes: `/managepanel/` → 2053, `/sub/` → 2096 (apps) or static HTML (
 ## Python API Pattern
 For scripting Heimdall API calls in Python, use `requests.Session()` to maintain cookies across requests. Individual `curl` calls lose the session cookie between requests, causing 404 on subsequent API calls. See `references/railway-deployment.md` for full example.
 
+**Pitfall**: CSRF token expires between requests. Always get a fresh CSRF token before each POST:
+```python
+csrf = s.get(f"{base}/csrf-token").json()["obj"]
+r = s.post(f"{base}/panel/api/server/restartXrayService", headers={"X-CSRF-Token": csrf})
+```
+
+## OpenAPI Spec Discovery
+The full API spec is at `/managepanel/panel/api/openapi.json` (187 paths). Useful for discovering correct endpoint names and methods. Key discovery: Heimdall v1.5.0 uses different endpoint names than older versions (e.g., `restartXrayService` not `xray/restart`).
+
 ## Railway API Quick Reference
 - List projects: `{ projects(first: 10) { edges { node { id name } } } }`
 - Create project: `mutation { projectCreate(input: { name: "X" }) { id name } }`
@@ -140,13 +150,38 @@ curl -s -b "$COOKIEJAR" "https://DOMAIN/managepanel/panel/api/inbounds/list/slim
 | `/managepanel/csrf-token` | GET | Get CSRF token |
 | `/managepanel/login` | POST | Login (username, password) |
 | `/managepanel/logout` | POST | Logout |
+| `/managepanel/panel/api/inbounds/list/slim` | GET | List inbounds (works without CSRF) |
+| `/managepanel/panel/api/inbounds/get/{id}` | GET | Get single inbound |
 | `/managepanel/panel/api/inbounds` | POST | Create inbound |
-| `/managepanel/panel/api/inbounds/list/slim` | GET | List inbounds |
-| `/managepanel/panel/api/inbounds/{id}` | PUT | Update inbound |
-| `/managepanel/panel/api/inbounds/{id}` | DELETE | Delete inbound |
-| `/managepanel/panel/api/inbounds/{id}/del` | POST | Delete inbound (alt) |
-| `/managepanel/panel/api/server/getData` | GET | Server stats |
-| `/managepanel/panel/api/xray/restart` | POST | Restart Xray |
+| `/managepanel/panel/api/inbounds/update/{id}` | POST | Update inbound (needs CSRF) |
+| `/managepanel/panel/api/inbounds/del/{id}` | POST | Delete inbound |
+| `/managepanel/panel/api/inbounds/setEnable/{id}` | POST | Enable/disable inbound |
+| `/managepanel/panel/api/server/status` | GET | Xray running status, version |
+| `/managepanel/panel/api/server/restartXrayService` | POST | Restart Xray (NOT `/xray/restart`) |
+| `/managepanel/panel/api/server/stopXrayService` | POST | Stop Xray |
+| `/managepanel/panel/api/server/xraylogs/{count}` | POST | Get Xray logs |
+| `/managepanel/panel/api/server/getData` | GET | Server data (may return empty via API) |
+
+### Inbound Update Payload (Critical Field Types)
+```json
+{
+  "up": 0,
+  "down": 0,
+  "total": 0,
+  "remark": "name",
+  "enable": true,
+  "expiryTime": 0,
+  "listen": "",
+  "port": 8080,
+  "protocol": "vless",
+  "settings": { "clients": [{"email": "user", "enable": true, "id": "uuid", "flow": "", "limitIp": 0, "subId": "", "tgId": 0, "totalGB": 0, "expiryTime": 0}], "decryption": "none" },
+  "streamSettings": { ... },
+  "sniffing": { "enabled": false },
+  "tag": "in-8080-tcp",
+  "spiderX": ""
+}
+```
+**Pitfall**: `port` MUST be int (not string), `tgId` MUST be int64 (not string). Both cause validation errors if wrong.
 
 ### x-ui CLI Setting Command
 Only these flags are supported:
@@ -163,6 +198,40 @@ No `-subPort` flag — sub port (2096) is stored in DB only.
 - After creating the first inbound via panel, Xray can be started
 - Restart Xray via panel button or API: `POST /managepanel/panel/api/xray/restart`
 - Reality inbounds require valid private/public key pair (generated by Heimdall)
+
+## Sub Page Templates (Official Heimdall)
+Heimdall ships with the **Ourenus Sub Info** React app as its subscription page:
+
+### Pre-built (use this)
+- **Path in repo**: `sub_templates/ourenus/index.html` (508KB)
+- **Download**: `curl -sL https://raw.githubusercontent.com/sh7CBAC/Heimdall/main/sub_templates/ourenus/index.html -o sub-view.html`
+- Falls back to `window.location.origin` for panel domain — works on any domain
+- Features: QR code, server info grid, config copy, app download links, dark/light theme
+
+### Source (if you need to customize)
+- **Path**: `sub_templates/ourenus-src/` (Vite + React)
+- **Build**: `cd ourenus-src && npm install && npm run build`
+- **Config**: `.env.example` has `VITE_PANEL_DOMAIN`, `VITE_BRAND_NAME`, etc.
+- ⚠️ **Build OOMs on constrained servers** — Vite build gets killed (exit 137 / SIGKILL) on servers with <2GB RAM. Use the pre-built version from the repo instead. Do NOT attempt `npm run build` on Hermes servers.
+
+### PHP version
+- **Path**: `sub_templates/ourenus/index.php`
+- Proxies requests to panel API for dynamic subscription data
+- Requires PHP 8.0+
+
+### Integration
+Copy the pre-built `index.html` as `sub-view.html` in your Docker build context. The nginx config already serves it at `/sub/` for browsers and `/view/` path.
+
+### Standalone Fallback
+The Ourenus page is a React SPA that fetches data from the panel's API (`/info`, `/configs`). If the sub server (port 2096) isn't running, the page shows only a loading spinner with "خطای اتصال به سرور" error. Two options:
+
+1. **Standalone HTML** — create a simple page with VLESS config hardcoded. See `templates/standalone-sub-view.html`.
+2. **Fetch/XHR Override** — inject a `<script>` into the pre-built Ourenus HTML to intercept API calls and return hardcoded data. This preserves the full Ourenus UI without any backend. Override both `XMLHttpRequest.prototype.send` and `window.fetch`. The `info` object needs a `links` array (not `link`) containing the VLESS config. See `references/fetch-override.md` for the complete injection script.
+
+## Heimdall API Quirks (v1.5.0)
+- **`server/getData` returns empty/404 via API** — works in browser but returns empty response from curl/requests. Use `inbounds/list/slim` to check inbound status instead.
+- **`restartXrayService` POST may return empty** — check if Xray actually restarted by querying `inbounds/list/slim` afterward (clients array will populate).
+- **`server/status` GET endpoint doesn't exist** — the OpenAPI spec lists it but it returns empty. Check Xray status indirectly via inbound data.
 
 ## References
 - Source repo: `ghjhdkysjtsjgz/3x-ui-Upgrade`
