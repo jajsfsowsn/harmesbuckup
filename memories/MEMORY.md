@@ -1,4 +1,4 @@
-User's Vercel account: mehrdad6. Token: [REDACTED_VERCEL_TOKEN]. Main project: mvpndeployer-deploy. Padding: 0-0. Uses NapsterNetV. GitHub accounts: jajsfsowsn (primary), jshshshshwisi (workflow scope), hzhhshsqioqjs ([REDACTED_GITHUB_TOKEN], Railway GitHub App installed). Android VPN app: github.com/jshshshshwisi/RofghaVPN — pre-built Xray binaries via GitHub Actions.
+User's Vercel account: mehrdad6. Token: vcp_REDACTED. Main project: mvpndeployer-deploy. Padding: 0-0. Uses NapsterNetV. GitHub accounts: jajsfsowsn (primary), jshshshshwisi (workflow scope), hzhhshsqioqjs (ghp_REDACTED, Railway GitHub App installed). Android VPN app: github.com/jshshshshwisi/RofghaVPN — pre-built Xray binaries via GitHub Actions.
 §
 User prefers autonomous execution — when asked, DO IT, don't suggest alternatives. "خودت انجام بده" = do it yourself. User gets frustrated with repeated Railway deployment errors and wants everything fixed from code without manual Dashboard steps.
 §
