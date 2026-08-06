@@ -1,3 +1,8 @@
+model:
+  default: memo2.5
+  provider: custom
+  base_url: https://9router-production-9013.up.railway.app/v1
+  api_key: ${HERMES_CUSTOM_9ROUTER_PRODUCTION_9013_UP_RAILWAY_APP_API_KEY}
 terminal:
   backend: local
   cwd: /data/workspace
@@ -5,9 +10,13 @@ terminal:
 compression:
   enabled: true
   threshold: 0.85
+command_allowlist:
+  - pipe remote content to shell
+  - script execution via -e/-c flag
 onboarding:
   seen:
     profile_build_offered: true
+    busy_input_prompt: true
 _config_version: 33
 platforms:
   telegram:
@@ -17,6 +26,11 @@ platforms:
       chat_id: '6202707152'
       name: Mehrdadㅤ
       user_id: '6202707152'
+custom_providers:
+  - name: 9router-production-9013.up.railway.app
+    base_url: https://9router-production-9013.up.railway.app/v1
+    key_env: HERMES_CUSTOM_9ROUTER_PRODUCTION_9013_UP_RAILWAY_APP_API_KEY
+    model: memo2.5
 
 # ── Security ──────────────────────────────────────────────────────────
 # Secret redaction is ON by default — strings that look like API keys,
