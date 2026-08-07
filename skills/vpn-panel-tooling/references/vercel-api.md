@@ -2,9 +2,9 @@
 
 ## Authentication
 ```bash
-export VERCEL_TOKEN="[REDACTED_TOKEN]"
+export VERCEL_TOKEN="vcp_xxxxx"
 # Or pass as header:
-# Authorization: Bearer [REDACTED_TOKEN]
+# Authorization: Bearer vcp_xxxxx
 ```
 
 ## Key Endpoints
@@ -44,7 +44,7 @@ GET https://api.vercel.com/v9/projects/{projectId}/env
 ### CLI Auth
 ```bash
 # Token-based (non-interactive):
-VERCEL_TOKEN=[REDACTED_TOKEN] vercel project ls
+VERCEL_TOKEN=vcp_xxxxx vercel project ls
 
 # Interactive login:
 vercel login

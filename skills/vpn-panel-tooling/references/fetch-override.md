@@ -19,7 +19,7 @@ Inject into pre-built `ourenus/index.html` to make the React SPA work without th
     "used_traffic": 21474836480,
     "expire": 1893456000,
     "subscription_url": "#",
-    "links": ["vless://fb2b7f35-4e4d-4d43-a3e2-1365f87e4f31@sakura.proxy.rlwy.net:13955?encryption=none&extra=%7B%22mode%22%3A%22auto%22%2C%22xPaddingBytes%22%3A%220-0%22%7D&fp=chrome&host=heimdall-railway-production.up.railway.app&mode=auto&path=%2Fmehrdad&pbk=EURW7X-zNj0Xybtrigduckzsx_zqjZwwxfbq3kAbgEI&security=reality&sid=d31d0b&sni=www.samsung.com&spx=%2Ffb1664e67e529bb&type=xhttp&x_padding_bytes=0-0#Mehrdad-VPN"],
+    "links": ["vless://[REDACTED_UUID]@sakura.proxy.rlwy.net:13955?encryption=none&extra=%7B%22mode%22%3A%22auto%22%2C%22xPaddingBytes%22%3A%220-0%22%7D&fp=chrome&host=heimdall-railway-production.up.railway.app&mode=auto&path=%2Fmehrdad&pbk=EURW7X-zNj0Xybtrigduckzsx_zqjZwwxfbq3kAbgEI&security=reality&sid=d31d0b&sni=www.samsung.com&spx=%2Ffb1664e67e529bb&type=xhttp&x_padding_bytes=0-0#Mehrdad-VPN"],
     "speedLimits": [],
     "connectionLimit": 0
   };
